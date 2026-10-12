@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="ms" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk DELIMa - Pengurusan Akaun Murid</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- SheetJS (XLSX) for Excel Processing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        theme: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                            950: '#2e1065',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.3);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(124, 58, 237, 0.6);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(16px);
+        }
+        .touch-active:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+
+    <div id="app" class="flex-1 flex flex-col min-h-screen">
+
+        <!-- Top Header Bar -->
+        <header class="sticky top-0 z-30 bg-purple-900 text-white shadow-lg transition-all">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-20">
+                    
+                    <!-- Logo & Portal Info -->
+                    <div class="flex items-center space-x-3.5">
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-black text-2xl shadow-md shadow-purple-500/30">
+                            D
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                                    <span>KIOSK DELIMa</span>
+                                </h1>
+                                <span class="bg-purple-800 border border-purple-600 text-purple-200 text-xs px-2.5 py-0.5 rounded-full font-semibold hidden sm:inline-block">SKTT Portal</span>
+                            </div>
+                            <p class="text-xs text-purple-200 font-medium">Portal Semakan & Pengurusan Akaun Sekolah</p>
+                        </div>
+                    </div>
+
+                    <!-- Live Date/Time & Controls -->
+                    <div class="flex items-center space-x-3 sm:space-x-4">
+                        <div class="hidden md:flex flex-col text-right mr-2">
+                            <span id="live-time" class="text-base font-extrabold text-purple-200 leading-none">00:00:00</span>
+                            <span id="live-date" class="text-[11px] text-purple-300 font-medium mt-1">--</span>
+                        </div>
+
+                        <!-- Active User Session Badge -->
+                        <div id="user-session-bar" class="hidden items-center bg-purple-950/80 border border-purple-700/60 rounded-xl px-3 py-1.5 text-xs text-purple-200 gap-2">
+                            <i class="fa-solid fa-user-check text-purple-400"></i>
+                            <span id="user-session-label" class="font-bold">Ibu Bapa</span>
+                            <button onclick="logoutUser()" class="ml-1 text-purple-300 hover:text-white text-xs font-bold underline">Keluar</button>
+                        </div>
+
+                        <!-- Theme Switcher -->
+                        <button onclick="toggleDarkMode()" title="Tukar Tema Dark/Light" class="p-2.5 rounded-xl bg-purple-800/80 text-purple-100 hover:bg-purple-700 transition-all touch-active border border-purple-700">
+                            <i id="theme-icon" class="fa-solid fa-moon"></i>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col space-y-6">
+
+            <!-- VIEW 1: MAIN LOGIN / ROLE SELECTION -->
+            <section id="view-login" class="flex-1 flex flex-col items-center justify-center py-6">
+                
+                <div class="w-full max-w-4xl space-y-8">
+                    
+                    <div class="text-center space-y-2">
+                        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700/60">
+                            <i class="fa-solid fa-shield-halved"></i> Mod Akses Selamat
+                        </span>
+                        <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                            Pilih Mod Akses Pengguna
+                        </h2>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
+                            Semak ID & Kata Laluan DELIMa murid, mohon reset kata laluan, atau urus pangkalan data sekolah secara terus.
+                        </p>
+                    </div>
+
+                    <!-- Role Switcher Tabs -->
+                    <div class="flex justify-center border-b border-slate-200 dark:border-slate-800 pb-2 space-x-2">
+                        <button onclick="switchLoginTab('ibu-bapa')" id="login-tab-ibu-bapa" class="px-5 py-2.5 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 bg-purple-600 text-white shadow-lg shadow-purple-600/30">
+                            <i class="fa-solid fa-users"></i> Ibu Bapa / Murid
+                        </button>
+                        <button onclick="switchLoginTab('guru')" id="login-tab-guru" class="px-5 py-2.5 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-purple-100">
+                            <i class="fa-solid fa-chalkboard-user"></i> Guru
+                        </button>
+                        <button onclick="switchLoginTab('admin')" id="login-tab-admin" class="px-5 py-2.5 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-purple-100">
+                            <i class="fa-solid fa-user-gear"></i> Admin ICT
+                        </button>
+                    </div>
+
+                    <!-- LOGIN FORM: IBU BAPA -->
+                    <div id="login-form-ibu-bapa" class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl max-w-xl mx-auto space-y-6">
+                        <div class="flex items-center space-x-3 text-purple-600 dark:text-purple-400">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-id-card"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Carian Akaun Murid</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Masukkan No. Kad Pengenalan / MyKid anak tanpa tanda dash (-)</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="handleParentLogin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">No. Kad Pengenalan / MyKid Anak</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-fingerprint absolute left-4 top-3.5 text-slate-400"></i>
+                                    <input type="text" id="parent-ic-input" required pattern="[0-9]{12}" maxlength="12" placeholder="Masukkan 12 Angka No. IC Anak" 
+                                        class="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-semibold text-sm outline-none focus:ring-2 focus:ring-purple-600 transition-all">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 touch-active">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <span>Cari Akaun DELIMa Anak</span>
+                            </button>
+                        </form>
+
+                        <div class="pt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-3">
+                            <p class="text-xs text-slate-500">
+                                Masalah log masuk atau anak belum tersenarai?
+                            </p>
+                            <button onclick="openReportModal()" class="w-full py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300/60 dark:border-amber-700/60 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span>Laporkan Masalah / Tiada Email</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- LOGIN FORM: GURU -->
+                    <div id="login-form-guru" class="hidden bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl max-w-xl mx-auto space-y-6">
+                        <div class="flex items-center space-x-3 text-purple-600 dark:text-purple-400">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-key"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Akses Guru Kelas / Subjek</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Masukkan kod kualifikasi guru sekolah</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="handleTeacherLogin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Kod Laluan Akses Guru</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-lock absolute left-4 top-3.5 text-slate-400"></i>
+                                    <input type="password" id="teacher-code-input" required placeholder="Masukkan Kod Khas Guru" 
+                                        class="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-semibold text-sm outline-none focus:ring-2 focus:ring-purple-600 transition-all">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 touch-active">
+                                <i class="fa-solid fa-right-to-bracket"></i>
+                                <span>Masuk Mod Carian Guru</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- LOGIN FORM: ADMIN ICT -->
+                    <div id="login-form-admin" class="hidden bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl max-w-xl mx-auto space-y-6">
+                        <div class="flex items-center space-x-3 text-purple-600 dark:text-purple-400">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-user-shield"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Akses Admin ICT / Pentadbir</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Masukkan kata laluan pentadbir sistem DELIMa</p>
+                            </div>
+                        </div>
+
+                        <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Kata Laluan Pentadbir Admin ICT</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-vault absolute left-4 top-3.5 text-slate-400"></i>
+                                    <input type="password" id="admin-pass-input" required placeholder="Masukkan Kata Laluan Admin ICT" 
+                                        class="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white font-semibold text-sm outline-none focus:ring-2 focus:ring-purple-600 transition-all">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-3.5 bg-purple-900 hover:bg-purple-950 text-white rounded-2xl font-bold text-sm shadow-lg shadow-purple-900/30 transition-all flex items-center justify-center gap-2 touch-active">
+                                <i class="fa-solid fa-sliders"></i>
+                                <span>Masuk Panel Admin ICT</span>
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- VIEW 2: PARENT / STUDENT PORTAL RESULT -->
+            <section id="view-parent" class="hidden flex-1 space-y-6">
+                
+                <div class="flex items-center justify-between">
+                    <button onclick="logoutUser()" class="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-left"></i> Kembali ke Carian Utama
+                    </button>
+                    <span class="text-xs text-purple-600 dark:text-purple-400 font-bold bg-purple-100 dark:bg-purple-900/50 px-3 py-1 rounded-full">
+                        Sistem Semakan Murid
+                    </span>
+                </div>
+
+                <!-- Student Info Card -->
+                <div id="parent-student-card" class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
+                    <!-- Rendered via JavaScript -->
+                </div>
+
+                <!-- Request Reset Form Box for Parents -->
+                <div class="bg-purple-50 dark:bg-purple-950/40 rounded-3xl p-6 border border-purple-200 dark:border-purple-800/60 space-y-4">
+                    <div class="flex items-center space-x-3 text-purple-700 dark:text-purple-300">
+                        <i class="fa-solid fa-rotate text-xl"></i>
+                        <div>
+                            <h4 class="font-bold text-sm">Perlu Reset Kata Laluan DELIMa Anak?</h4>
+                            <p class="text-xs text-purple-600 dark:text-purple-400">Permohonan akan dihantar secara terus kepada Guru ICT / Pentadbir Sekolah.</p>
+                        </div>
+                    </div>
+                    <form onsubmit="handleRequestReset(event)" class="space-y-3">
+                        <input type="hidden" id="reset-student-ic">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Sebab Permohonan Reset / Nota Tambahan</label>
+                            <input type="text" id="reset-reason-input" required placeholder="Contoh: Lupa kata laluan / Akaun dikunci" 
+                                class="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                        </div>
+                        <button type="submit" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Hantar Permohonan Reset
+                        </button>
+                    </form>
+                </div>
+
+            </section>
+
+            <!-- VIEW 3: TEACHER & ADMIN SEARCH DASHBOARD -->
+            <section id="view-dashboard" class="hidden flex-1 space-y-6">
+                
+                <!-- Dashboard Header Stats & Navigation -->
+                <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 id="dashboard-role-title" class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear text-purple-600"></i> Panel Semakan Akaun DELIMa
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cari, cetak, dan urus maklumat akaun murid secara individu atau pukal.</p>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="exportTableToCSV()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-file-excel"></i> Eksport Senarai (CSV)
+                        </button>
+                        <button onclick="window.print()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-print"></i> Cetak
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Admin & Teacher Navigation Tabs -->
+                <div class="flex border-b border-slate-200 dark:border-slate-800 space-x-2 overflow-x-auto pb-1" id="dashboard-nav-tabs">
+                    <button onclick="switchDashboardTab('search')" id="dash-tab-search" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-md">
+                        <i class="fa-solid fa-magnifying-glass mr-1"></i> Carian & Senarai Murid
+                    </button>
+                    <button onclick="switchDashboardTab('resets')" id="dash-tab-resets" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        <i class="fa-solid fa-rotate mr-1"></i> Permohonan Reset <span id="reset-badge-count" class="ml-1 bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded-full text-[10px] font-black">0</span>
+                    </button>
+                    <button onclick="switchDashboardTab('reports')" id="dash-tab-reports" class="hidden px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> Laporan Tiada Email / Isu Akaun <span id="report-badge-count" class="ml-1 bg-rose-500 text-white px-1.5 py-0.2 rounded-full text-[10px] font-black">0</span>
+                    </button>
+                    <button onclick="switchDashboardTab('admin-crud')" id="dash-tab-admin-crud" class="hidden px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        <i class="fa-solid fa-database mr-1"></i> Pengurusan Pangkalan Data & Excel
+                    </button>
+                </div>
+
+                <!-- TAB CONTENT 1: SEARCH & BULK LIST -->
+                <div id="dash-content-search" class="space-y-4">
+                    
+                    <!-- Search Filters Bar -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                        
+                        <div class="relative md:col-span-2">
+                            <i class="fa-solid fa-search absolute left-3.5 top-3 text-slate-400"></i>
+                            <input type="text" id="dash-search-input" onkeyup="filterDashboardTable()" placeholder="Cari mengikut Nama, No. IC, atau Email DELIMa..." 
+                                class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                        </div>
+
+                        <div>
+                            <select id="dash-class-filter" onchange="filterDashboardTable()" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                                <option value="Semua">Semua Kelas</option>
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <!-- Main Student Data Table -->
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-purple-900 text-white font-bold">
+                                        <th class="p-3.5">Bil</th>
+                                        <th class="p-3.5">Nama Murid</th>
+                                        <th class="p-3.5">No. IC / MyKid</th>
+                                        <th class="p-3.5">Kelas</th>
+                                        <th class="p-3.5">Email DELIMa</th>
+                                        <th class="p-3.5">Kata Laluan DELIMa</th>
+                                        <th class="p-3.5 text-center">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TAB CONTENT 2: RESETS REQUESTS -->
+                <div id="dash-content-resets" class="hidden space-y-4">
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm p-4 space-y-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-sm">Senarai Permohonan Reset Kata Laluan</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 dark:bg-slate-800 font-bold text-slate-700 dark:text-slate-300">
+                                        <th class="p-3">Tarikh</th>
+                                        <th class="p-3">Nama Murid</th>
+                                        <th class="p-3">No. IC</th>
+                                        <th class="p-3">Kelas</th>
+                                        <th class="p-3">Sebab / Nota</th>
+                                        <th class="p-3">Status</th>
+                                        <th class="p-3 text-center">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reset-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB CONTENT 3: NO EMAIL / ISSUE REPORTS (ADMIN ONLY) -->
+                <div id="dash-content-reports" class="hidden space-y-4">
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm p-4 space-y-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-sm">Laporan Tiada Email / Isu Akaun dari Ibu Bapa</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 dark:bg-slate-800 font-bold text-slate-700 dark:text-slate-300">
+                                        <th class="p-3">Tarikh</th>
+                                        <th class="p-3">Nama Murid</th>
+                                        <th class="p-3">No. IC</th>
+                                        <th class="p-3">Kelas</th>
+                                        <th class="p-3">Jenis Isu</th>
+                                        <th class="p-3">Keterangan</th>
+                                        <th class="p-3 text-center">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                    <!-- Dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB CONTENT 4: ADMIN CRUD & EXCEL IMPORT TOOLS -->
+                <div id="dash-content-admin-crud" class="hidden space-y-6">
+                    
+                    <!-- EXCEL BATCH MANAGEMENT BOX -->
+                    <div class="bg-purple-900 text-white rounded-3xl p-6 shadow-xl space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-700 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-file-excel"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-base">Pengurusan Pukal Melalui Excel (CSV / XLSX)</h3>
+                                <p class="text-xs text-purple-200">Muat naik fail Excel untuk mengemaskini atau memadam ID DELIMa murid secara pukal mengikut No. IC.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                            
+                            <!-- Tool 1: Batch Add / Update -->
+                            <div class="bg-purple-950/60 p-4 rounded-2xl border border-purple-700/60 space-y-3">
+                                <h4 class="font-bold text-xs text-purple-200 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-plus text-emerald-400"></i>
+                                    <span>Tambah / Kemaskini ID DELIMa (Excel)</span>
+                                </h4>
+                                <p class="text-[11px] text-purple-300">Fail mesti mengandungi lajur: <b>NO_IC</b>, <b>EMAIL</b>, <b>PASSWORD</b> (Pilihan: NAMA, KELAS).</p>
+                                <label class="block w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl text-center cursor-pointer transition-all">
+                                    <i class="fa-solid fa-upload mr-1"></i> Pilih Fail Excel & Kemaskini
+                                    <input type="file" accept=".xlsx, .xls, .csv" onchange="handleExcelBatchUpdate(event)" class="hidden">
+                                </label>
+                            </div>
+
+                            <!-- Tool 2: Batch Clear / Delete ID -->
+                            <div class="bg-purple-950/60 p-4 rounded-2xl border border-purple-700/60 space-y-3">
+                                <h4 class="font-bold text-xs text-purple-200 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-minus text-rose-400"></i>
+                                    <span>Kosongkan / Padam ID DELIMa (Excel)</span>
+                                </h4>
+                                <p class="text-[11px] text-purple-300">Fail mengandungi lajur <b>NO_IC</b>. ID DELIMa murid berkenaan akan diset kepada "TIADA".</p>
+                                <label class="block w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl text-center cursor-pointer transition-all">
+                                    <i class="fa-solid fa-eraser mr-1"></i> Pilih Fail Excel & Padam ID
+                                    <input type="file" accept=".xlsx, .xls, .csv" onchange="handleExcelBatchClear(event)" class="hidden">
+                                </label>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- MANUAL ADD / EDIT STUDENT FORM -->
+                    <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                        <h3 class="font-bold text-slate-900 dark:text-white text-sm">Tambah Murid Baru Secara Manual</h3>
+                        
+                        <form onsubmit="handleManualAddStudent(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Penuh Murid</label>
+                                <input type="text" id="add-student-name" required placeholder="NAMA MURID" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">No. IC / MyKid (12 Angka)</label>
+                                <input type="text" id="add-student-ic" required pattern="[0-9]{12}" placeholder="000000000000" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kelas</label>
+                                <input type="text" id="add-student-class" required placeholder="Contoh: 1 BESTARI" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Email DELIMa</label>
+                                <input type="text" id="add-student-email" placeholder="g-12345678@moe-dl.edu.my" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kata Laluan DELIMa</label>
+                                <input type="text" id="add-student-pass" placeholder="Kata laluan" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-600">
+                            </div>
+
+                            <div class="flex items-end">
+                                <button type="submit" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-md transition-all">
+                                    <i class="fa-solid fa-plus mr-1"></i> Simpan Murid
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- REPORT PROBLEM MODAL FOR PARENTS -->
+        <div id="report-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Laporkan Masalah / Tiada Email
+                    </h3>
+                    <button onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <form onsubmit="handleSubmitReport(event)" class="space-y-3 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Penuh Murid</label>
+                        <input type="text" id="report-name" required placeholder="NAMA MURID" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">No. IC / MyKid (12 Angka)</label>
+                        <input type="text" id="report-ic" required pattern="[0-9]{12}" placeholder="000000000000" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kelas</label>
+                        <input type="text" id="report-class" required placeholder="Contoh: 2 CEKAL" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-600">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Masalah</label>
+                        <select id="report-type" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-600">
+                            <option value="Tiada Email DELIMa">Tiada Email DELIMa / Belum Dicipta</option>
+                            <option value="Akaun Dikunci">Akaun Dikunci / Kena Sekat</option>
+                            <option value="Tiada Dalam Senarai">Murid Tiada Dalam Senarai Sistem</option>
+                            <option value="Lain-lain Isu">Lain-lain Isu</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Keterangan Lanjut</label>
+                        <textarea id="report-desc" rows="3" required placeholder="Terangkan masalah yang dihadapi..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-600"></textarea>
+                    </div>
+
+                    <div class="pt-2 flex justify-end gap-2">
+                        <button type="button" onclick="closeReportModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold">
+                            Batal
+                        </button>
+                        <button type="submit" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-md">
+                            Hantar Laporan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-4 text-center text-xs text-slate-500">
+            <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+                <p>© 2026 Kiosk DELIMa SKTT - Hak Cipta Terpelihara.</p>
+                <p class="text-[11px] text-slate-400">Direka untuk kemudahan Ibu Bapa, Guru & Admin ICT Sekolah.</p>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Toast Overlay -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <script>
+        // Sample Initial Database
+        const INITIAL_STUDENTS = [
+            { ic: "150101011234", name: "AHMAD DANIAL BIN ROSLI", class: "1 BESTARI", email: "m-10293847@moe-dl.edu.my", pass: "Delima@2026" },
+            { ic: "150202022345", name: "SITI NURHALIZA BINTI ZULKIFLI", class: "1 BESTARI", email: "m-20394857@moe-dl.edu.my", pass: "Siti#1234" },
+            { ic: "140303033456", name: "MUHAMMAD HARITH BIN AZMAN", class: "2 CEKAL", email: "m-30495867@moe-dl.edu.my", pass: "Harith2026" },
+            { ic: "140404044567", name: "NUR AIMI BINTI AMIR", class: "2 CEKAL", email: "TIADA", pass: "TIADA" },
+            { ic: "130505055678", name: "LEE WEI JIE", class: "3 DEDIKASI", email: "m-50697888@moe-dl.edu.my", pass: "LeeWJ#88" }
+        ];
+
+        // Application State
+        let appState = {
+            students: [],
+            resets: [],
+            reports: [],
+            currentUserRole: null, // 'ibu-bapa', 'guru', 'admin'
+            activeStudent: null,
+            activeLoginTab: 'ibu-bapa',
+            activeDashTab: 'search'
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDatabase();
+            initClock();
+            applyTheme();
+        });
+
+        function loadDatabase() {
+            const savedDb = localStorage.getItem('kiosk_delima_db');
+            if (savedDb) {
+                appState.students = JSON.parse(savedDb);
+            } else {
+                appState.students = INITIAL_STUDENTS;
+                saveDatabase();
+            }
+
+            const savedResets = localStorage.getItem('kiosk_delima_resets');
+            if (savedResets) appState.resets = JSON.parse(savedResets);
+
+            const savedReports = localStorage.getItem('kiosk_delima_reports');
+            if (savedReports) appState.reports = JSON.parse(savedReports);
+        }
+
+        function saveDatabase() {
+            localStorage.setItem('kiosk_delima_db', JSON.stringify(appState.students));
+            localStorage.setItem('kiosk_delima_resets', JSON.stringify(appState.resets));
+            localStorage.setItem('kiosk_delima_reports', JSON.stringify(appState.reports));
+            updateBadges();
+        }
+
+        function updateBadges() {
+            const pendingResets = appState.resets.filter(r => r.status === 'Pending').length;
+            const pendingReports = appState.reports.filter(r => r.status === 'Baru').length;
+            
+            document.getElementById('reset-badge-count').textContent = pendingResets;
+            document.getElementById('report-badge-count').textContent = pendingReports;
+        }
+
+        // Clock Engine
+        function initClock() {
+            function tick() {
+                const now = new Date();
+                document.getElementById('live-time').textContent = now.toLocaleTimeString('ms-MY');
+                document.getElementById('live-date').textContent = now.toLocaleDateString('ms-MY', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+            }
+            tick();
+            setInterval(tick, 1000);
+        }
+
+        // Login Tab Switcher
+        function switchLoginTab(tab) {
+            appState.activeLoginTab = tab;
+            ['ibu-bapa', 'guru', 'admin'].forEach(t => {
+                document.getElementById(`login-form-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`login-tab-${t}`);
+                btn.className = "px-5 py-2.5 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-purple-100";
+            });
+
+            document.getElementById(`login-form-${tab}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`login-tab-${tab}`);
+            activeBtn.className = "px-5 py-2.5 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 bg-purple-600 text-white shadow-lg shadow-purple-600/30";
+        }
+
+        // Parent Login Handler
+        function handleParentLogin(e) {
+            e.preventDefault();
+            const icInput = document.getElementById('parent-ic-input').value.trim();
+            const student = appState.students.find(s => s.ic === icInput);
+
+            if (student) {
+                appState.currentUserRole = 'ibu-bapa';
+                appState.activeStudent = student;
+                updateUserSessionBar('Ibu Bapa / Murid');
+                renderParentView();
+                showView('parent');
+                showToast(`Maklumat murid ${student.name} ditemui.`);
+            } else {
+                showToast('No. IC / MyKid tidak ditemui dalam pangkalan data sekolah.');
+            }
+        }
+
+        // Teacher Login Handler (Passcode: XBA3070)
+        function handleTeacherLogin(e) {
+            e.preventDefault();
+            const code = document.getElementById('teacher-code-input').value.trim();
+            if (code === 'XBA3070') {
+                appState.currentUserRole = 'guru';
+                updateUserSessionBar('Guru Kelas');
+                setupDashboardForRole();
+                showView('dashboard');
+                showToast('Selamat datang Guru!');
+            } else {
+                showToast('Kod Laluan Guru Tidak Sah!');
+            }
+        }
+
+        // Admin ICT Login Handler (Passcode: SKTTADMIN)
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('admin-pass-input').value.trim();
+            if (pass === 'SKTTADMIN') {
+                appState.currentUserRole = 'admin';
+                updateUserSessionBar('Admin ICT');
+                setupDashboardForRole();
+                showView('dashboard');
+                showToast('Akses Pentadbir Admin ICT disahkan.');
+            } else {
+                showToast('Kata Laluan Admin ICT Tidak Sah!');
+            }
+        }
+
+        function updateUserSessionBar(label) {
+            document.getElementById('user-session-bar').classList.remove('hidden');
+            document.getElementById('user-session-bar').classList.add('flex');
+            document.getElementById('user-session-label').textContent = label;
+        }
+
+        function logoutUser() {
+            appState.currentUserRole = null;
+            appState.activeStudent = null;
+            document.getElementById('user-session-bar').classList.add('hidden');
+            document.getElementById('user-session-bar').classList.remove('flex');
+            showView('login');
+            showToast('Anda telah keluar sistem.');
+        }
+
+        function showView(viewName) {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-parent').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+        }
+
+        function renderParentView() {
+            const student = appState.activeStudent;
+            const container = document.getElementById('parent-student-card');
+            document.getElementById('reset-student-ic').value = student.ic;
+
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 gap-2">
+                    <div>
+                        <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Maklumat Akaun Murid</span>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">${student.name}</h3>
+                    </div>
+                    <span class="px-3 py-1 bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-bold rounded-xl text-xs w-fit">
+                        Kelas: ${student.class}
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- EMAIL BOX -->
+                    <div class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2">
+                        <span class="text-xs font-semibold text-slate-500">ID / Email DELIMa</span>
+                        <div class="flex items-center justify-between bg-white dark:bg-slate-900 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <span class="font-mono font-bold text-xs sm:text-sm text-purple-700 dark:text-purple-300 truncate mr-2">${student.email}</span>
+                            <button onclick="copyToClipboard('${student.email}')" title="Salin Email" class="p-1.5 text-slate-400 hover:text-purple-600 transition-colors">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PASSWORD BOX (VISIBLE WITH COPY) -->
+                    <div class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2">
+                        <span class="text-xs font-semibold text-slate-500">Kata Laluan DELIMa</span>
+                        <div class="flex items-center justify-between bg-white dark:bg-slate-900 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <span class="font-mono font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate mr-2">${student.pass}</span>
+                            <button onclick="copyToClipboard('${student.pass}')" title="Salin Kata Laluan" class="p-1.5 text-slate-400 hover:text-purple-600 transition-colors">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            `;
+        }
+
+        function setupDashboardForRole() {
+            const roleTitle = document.getElementById('dashboard-role-title');
+            const reportsTabBtn = document.getElementById('dash-tab-reports');
+            const crudTabBtn = document.getElementById('dash-tab-admin-crud');
+
+            if (appState.currentUserRole === 'admin') {
+                roleTitle.innerHTML = `<i class="fa-solid fa-user-shield text-purple-600"></i> Panel Kawalan Admin ICT`;
+                reportsTabBtn.classList.remove('hidden');
+                crudTabBtn.classList.remove('hidden');
+            } else {
+                roleTitle.innerHTML = `<i class="fa-solid fa-chalkboard-user text-purple-600"></i> Panel Semakan Akaun Guru`;
+                reportsTabBtn.classList.add('hidden');
+                crudTabBtn.classList.add('hidden');
+            }
+
+            populateClassFilter();
+            renderDashboardTable();
+            renderResetTable();
+            renderReportsTable();
+            switchDashboardTab('search');
+        }
+
+        function switchDashboardTab(tab) {
+            appState.activeDashTab = tab;
+            ['search', 'resets', 'reports', 'admin-crud'].forEach(t => {
+                const el = document.getElementById(`dash-content-${t}`);
+                if (el) el.classList.add('hidden');
+
+                const btn = document.getElementById(`dash-tab-${t}`);
+                if (btn) btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
+            });
+
+            const activeContent = document.getElementById(`dash-content-${tab}`);
+            if (activeContent) activeContent.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`dash-tab-${tab}`);
+            if (activeBtn) activeBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-purple-600 text-white shadow-md";
+        }
+
+        function populateClassFilter() {
+            const classes = [...new Set(appState.students.map(s => s.class))].sort();
+            const select = document.getElementById('dash-class-filter');
+            select.innerHTML = `<option value="Semua">Semua Kelas</option>`;
+            classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                select.appendChild(opt);
+            });
+        }
+
+        function renderDashboardTable() {
+            const tbody = document.getElementById('dashboard-table-body');
+            tbody.innerHTML = '';
+
+            const searchVal = document.getElementById('dash-search-input').value.toLowerCase();
+            const classVal = document.getElementById('dash-class-filter').value;
+
+            let filtered = appState.students.filter(s => {
+                const matchesSearch = s.name.toLowerCase().includes(searchVal) || s.ic.includes(searchVal) || s.email.toLowerCase().includes(searchVal);
+                const matchesClass = (classVal === 'Semua' || s.class === classVal);
+                return matchesSearch && matchesClass;
+            });
+
+            filtered.forEach((s, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3.5 font-bold">${idx + 1}</td>
+                    <td class="p-3.5 font-bold text-slate-900 dark:text-white">${s.name}</td>
+                    <td class="p-3.5 font-mono">${s.ic}</td>
+                    <td class="p-3.5 font-semibold text-purple-600 dark:text-purple-400">${s.class}</td>
+                    <td class="p-3.5 font-mono text-xs">${s.email}</td>
+                    <td class="p-3.5 font-mono text-xs font-bold text-slate-800 dark:text-slate-200">${s.pass}</td>
+                    <td class="p-3.5 text-center space-x-1">
+                        <button onclick="copyToClipboard('${s.email}')" title="Salin Email" class="p-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                        ${appState.currentUserRole === 'admin' ? `
+                            <button onclick="deleteStudent('${s.ic}')" title="Padam Murid" class="p-1.5 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterDashboardTable() {
+            renderDashboardTable();
+        }
+
+        function handleRequestReset(e) {
+            e.preventDefault();
+            const ic = document.getElementById('reset-student-ic').value;
+            const reason = document.getElementById('reset-reason-input').value.trim();
+            const student = appState.students.find(s => s.ic === ic);
+
+            if (student) {
+                appState.resets.unshift({
+                    id: 'RST-' + Date.now(),
+                    date: new Date().toLocaleDateString('ms-MY'),
+                    ic: student.ic,
+                    name: student.name,
+                    class: student.class,
+                    reason,
+                    status: 'Pending'
+                });
+                saveDatabase();
+                document.getElementById('reset-reason-input').value = '';
+                showToast('Permohonan reset telah dihantar ke pihak sekolah.');
+            }
+        }
+
+        function renderResetTable() {
+            const tbody = document.getElementById('reset-table-body');
+            tbody.innerHTML = '';
+
+            appState.resets.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50";
+                tr.innerHTML = `
+                    <td class="p-3">${r.date}</td>
+                    <td class="p-3 font-bold text-slate-900 dark:text-white">${r.name}</td>
+                    <td class="p-3 font-mono">${r.ic}</td>
+                    <td class="p-3">${r.class}</td>
+                    <td class="p-3 text-slate-500">${r.reason}</td>
+                    <td class="p-3 font-bold ${r.status === 'Selesai' ? 'text-emerald-600' : 'text-amber-600'}">${r.status}</td>
+                    <td class="p-3 text-center">
+                        ${r.status === 'Pending' ? `
+                            <button onclick="resolveReset('${r.id}')" class="px-3 py-1 bg-emerald-600 text-white rounded-lg text-[11px] font-bold">
+                                Tanda Selesai
+                            </button>
+                        ` : '<i class="fa-solid fa-check-double text-emerald-500 text-base"></i>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateBadges();
+        }
+
+        function resolveReset(id) {
+            const r = appState.resets.find(item => item.id === id);
+            if (r) {
+                r.status = 'Selesai';
+                saveDatabase();
+                renderResetTable();
+                showToast('Permohonan diselesaikan.');
+            }
+        }
+
+        // Report Issue Modal & Handler
+        function openReportModal() {
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        function handleSubmitReport(e) {
+            e.preventDefault();
+            const name = document.getElementById('report-name').value.trim();
+            const ic = document.getElementById('report-ic').value.trim();
+            const cls = document.getElementById('report-class').value.trim();
+            const type = document.getElementById('report-type').value;
+            const desc = document.getElementById('report-desc').value.trim();
+
+            appState.reports.unshift({
+                id: 'REP-' + Date.now(),
+                date: new Date().toLocaleDateString('ms-MY'),
+                name,
+                ic,
+                class: cls,
+                type,
+                desc,
+                status: 'Baru'
+            });
+
+            saveDatabase();
+            closeReportModal();
+            showToast('Laporan masalah berjaya dihantar kepada Admin ICT.');
+        }
+
+        function renderReportsTable() {
+            const tbody = document.getElementById('reports-table-body');
+            tbody.innerHTML = '';
+
+            appState.reports.forEach(rep => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50";
+                tr.innerHTML = `
+                    <td class="p-3">${rep.date}</td>
+                    <td class="p-3 font-bold text-slate-900 dark:text-white">${rep.name}</td>
+                    <td class="p-3 font-mono">${rep.ic}</td>
+                    <td class="p-3">${rep.class}</td>
+                    <td class="p-3 font-bold text-rose-600">${rep.type}</td>
+                    <td class="p-3 text-slate-500">${rep.desc}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteReport('${rep.id}')" class="p-1.5 bg-rose-100 text-rose-700 rounded-lg">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateBadges();
+        }
+
+        function deleteReport(id) {
+            appState.reports = appState.reports.filter(r => r.id !== id);
+            saveDatabase();
+            renderReportsTable();
+            showToast('Laporan dipadam.');
+        }
+
+        function handleExcelBatchUpdate(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+
+                    let updatedCount = 0;
+                    json.forEach(row => {
+                        const ic = String(row.NO_IC || row.IC || '').trim();
+                        if (ic) {
+                            let student = appState.students.find(s => s.ic === ic);
+                            if (student) {
+                                if (row.EMAIL) student.email = String(row.EMAIL).trim();
+                                if (row.PASSWORD) student.pass = String(row.PASSWORD).trim();
+                                if (row.NAMA) student.name = String(row.NAMA).trim();
+                                if (row.KELAS) student.class = String(row.KELAS).trim();
+                            } else {
+                                appState.students.push({
+                                    ic,
+                                    name: row.NAMA ? String(row.NAMA).trim() : 'MURID BARU',
+                                    class: row.KELAS ? String(row.KELAS).trim() : 'TIADA KELAS',
+                                    email: row.EMAIL ? String(row.EMAIL).trim() : 'TIADA',
+                                    pass: row.PASSWORD ? String(row.PASSWORD).trim() : 'TIADA'
+                                });
+                            }
+                            updatedCount++;
+                        }
+                    });
+
+                    saveDatabase();
+                    populateClassFilter();
+                    renderDashboardTable();
+                    showToast(`Berjaya mengemaskini ${updatedCount} rekod murid dari Excel!`);
+                } catch(err) {
+                    showToast('Ralat membaca fail Excel. Sila pastikan format sah.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleExcelBatchClear(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+
+                    let clearedCount = 0;
+                    json.forEach(row => {
+                        const ic = String(row.NO_IC || row.IC || '').trim();
+                        if (ic) {
+                            let student = appState.students.find(s => s.ic === ic);
+                            if (student) {
+                                student.email = 'TIADA';
+                                student.pass = 'TIADA';
+                                clearedCount++;
+                            }
+                        }
+                    });
+
+                    saveDatabase();
+                    renderDashboardTable();
+                    showToast(`Berjaya memadam/mengosongkan ID DELIMa untuk ${clearedCount} murid.`);
+                } catch(err) {
+                    showToast('Ralat semasa proses pengosongan pukal.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleManualAddStudent(e) {
+            e.preventDefault();
+            const name = document.getElementById('add-student-name').value.trim();
+            const ic = document.getElementById('add-student-ic').value.trim();
+            const cls = document.getElementById('add-student-class').value.trim();
+            const email = document.getElementById('add-student-email').value.trim() || 'TIADA';
+            const pass = document.getElementById('add-student-pass').value.trim() || 'TIADA';
+
+            if (appState.students.some(s => s.ic === ic)) {
+                showToast('No. IC ini sudah wujud dalam sistem.');
+                return;
+            }
+
+            appState.students.push({ ic, name, class: cls, email, pass });
+            saveDatabase();
+            populateClassFilter();
+            renderDashboardTable();
+            showToast('Murid baru berjaya ditambah.');
+        }
+
+        function deleteStudent(ic) {
+            appState.students = appState.students.filter(s => s.ic !== ic);
+            saveDatabase();
+            populateClassFilter();
+            renderDashboardTable();
+            showToast('Murid telah dipadam.');
+        }
+
+        // Export to CSV
+        function exportTableToCSV() {
+            let csv = "Bil,Nama Murid,No IC,Kelas,Email DELIMa,Kata Laluan DELIMa\n";
+            appState.students.forEach((s, idx) => {
+                csv += `"${idx+1}","${s.name}","${s.ic}","${s.class}","${s.email}","${s.pass}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", `senarai-delima-sktt-${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Fail CSV berjaya dijangka & dimuat turun.');
+        }
+
+        // Utility: Copy to Clipboard
+        function copyToClipboard(text) {
+            if (!text || text === 'TIADA') return;
+            const temp = document.createElement('input');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast(`Disalin: ${text}`);
+        }
+
+        // Utility: Theme Switcher
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('kiosk_theme', isDark ? 'dark' : 'light');
+            applyTheme();
+        }
+
+        function applyTheme() {
+            const theme = localStorage.getItem('kiosk_theme') || 'light';
+            const themeIcon = document.getElementById('theme-icon');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeIcon.className = "fa-solid fa-sun text-amber-400";
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.className = "fa-solid fa-moon text-purple-200";
+            }
+        }
+
+        // Toast Helper
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-slate-700 pointer-events-auto transition-all transform translate-y-2 opacity-0";
+            toast.innerHTML = `<i class="fa-solid fa-circle-info text-purple-400"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
